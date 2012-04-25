@@ -602,7 +602,8 @@ def convertOBJtoPCD(mesh_file, pcd_file):
 
 # Print the usage for this command line tool
 def usage():
-  print "\nUsage: rosrun vertis scan [options] <input_mesh.obj> <output_cloud.pcd>"
+  print "\nUsage: rosrun cfg_obj scan [options] <input_mesh.obj> <output_cloud.pcd>"
+  print "\nNB: Absolute paths must be used for input and output files."
   print "\n  General options:"
   print "    --help (-h)         Print usage options."
   print "    -resize (-rs) N     Resize the models larges dimension to N meters"

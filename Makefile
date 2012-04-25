@@ -239,6 +239,19 @@ rospack_gensrv/fast:
 .PHONY : rospack_gensrv/fast
 
 #=============================================================================
+# Target rules for targets named scan
+
+# Build rule for target.
+scan: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 scan
+.PHONY : scan
+
+# fast build rule for target.
+scan/fast:
+	$(MAKE) -f CMakeFiles/scan.dir/build.make CMakeFiles/scan.dir/build
+.PHONY : scan/fast
+
+#=============================================================================
 # Target rules for targets named test
 
 # Build rule for target.
@@ -318,6 +331,21 @@ src/ransac.s:
 	$(MAKE) -f CMakeFiles/ransac.dir/build.make CMakeFiles/ransac.dir/src/ransac.s
 .PHONY : src/ransac.s
 
+# target to build an object file
+src/scan.o:
+	$(MAKE) -f CMakeFiles/scan.dir/build.make CMakeFiles/scan.dir/src/scan.o
+.PHONY : src/scan.o
+
+# target to preprocess a source file
+src/scan.i:
+	$(MAKE) -f CMakeFiles/scan.dir/build.make CMakeFiles/scan.dir/src/scan.i
+.PHONY : src/scan.i
+
+# target to generate assembly for a file
+src/scan.s:
+	$(MAKE) -f CMakeFiles/scan.dir/build.make CMakeFiles/scan.dir/src/scan.s
+.PHONY : src/scan.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -337,6 +365,7 @@ help:
 	@echo "... rospack_genmsg"
 	@echo "... rospack_genmsg_libexe"
 	@echo "... rospack_gensrv"
+	@echo "... scan"
 	@echo "... test"
 	@echo "... test-future"
 	@echo "... test-results"
@@ -345,6 +374,9 @@ help:
 	@echo "... src/ransac.o"
 	@echo "... src/ransac.i"
 	@echo "... src/ransac.s"
+	@echo "... src/scan.o"
+	@echo "... src/scan.i"
+	@echo "... src/scan.s"
 .PHONY : help
 
 
