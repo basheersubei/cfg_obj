@@ -5,7 +5,8 @@
 // Include the necessary standard libraries
 #include <iostream>
 #include <cstdlib>
-# include <queue>
+#include <queue>
+#include <cstring>
 // Include necessary ros/pcl libraries
 #include <pcl/console/parse.h>
 #include <pcl/filters/extract_indices.h>
@@ -38,6 +39,8 @@ const float CYL_THRESH_MOD= 5;
 int CLUSTERS= 0;
 const int SHAPES= 3;
 const int MAX_CYL_ITERATIONS= 250;
+bool VERBOSE= false;
+bool VISUAL= false;
 
 // A tree structure to keep track of the shape sequences ----------------------------------------------------------
 struct Tree {
@@ -182,6 +185,18 @@ vector<int>* getOutliers(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, vector<int> 
   return outliers;
 }
 
+// Print the banner and usage information for this executable
+void usage(){
+  cout << "\nGeneralized Ransac Segmentation\n";
+  cout << "  authors Caspar Anderegg and Bill Best - spring 2012\n";
+  cout << "\nUsage: rosrun cfg_obj ransac [OPTIONS] <input_cloud.pcd>\n";
+  cout << "\nOptions:\n";
+  cout << "\n  --help		Print usage options.\n";
+  cout << "  -vv		Verbose mode, print out progress during computation.\n";
+  cout << "  -visual		Visual mode, display a colored segmentation of the cloud.\n";
+  cout << "\n  Purpose: Uses a generalized RANSAC algorithm to segment a PCL pointcloud (.pcd) file into component shapes. Supported shapes are planes, cylinders, and spheres. Dumps the segmented .pcd file as well as a neighbor map between segments.\n" << endl;
+}
+
 //Print a shape given it's integer encoding
 void printShape(int encoded){
   if (encoded==0) {
@@ -195,6 +210,23 @@ void printShape(int encoded){
 
 // Main method
 int main(int argc, char** argv) {
+
+  // Parse arguments and, if necessary, print usage
+  if (argc < 2){
+    usage();
+    exit(0);
+  }
+  for (int i=1; i<argc; i++){
+    if (strcmp(argv[i],"-vv")==0) { // Check verbose flag
+      VERBOSE= true;
+    } else if (strcmp(argv[i],"-visual")==0){ // Check visual flag
+      VISUAL= true;
+    } else if (strcmp(argv[i],"--help")==0){ // Check help flag
+      usage();
+      exit(0);
+    }
+  }
+
   // initialize queue
   queue<treeNode*> toCompute;
 
@@ -202,7 +234,7 @@ int main(int argc, char** argv) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
   pcl::PointCloud<pcl::PointXYZ>::Ptr updated (new pcl::PointCloud<pcl::PointXYZ>);
 
-  char* pcdName = argv[1];
+  char* pcdName = argv[argc-1];
   
   if (pcl::io::loadPCDFile<pcl::PointXYZ> (pcdName, *cloud) == -1) //* load the file
   {
@@ -210,7 +242,7 @@ int main(int argc, char** argv) {
     return (-1);
   }
   MAX_OUTLIERS= (int)(cloud->size() * .05); 
-  cout<<"Loaded point cloud...\n";
+  if (VERBOSE) cout<<"Loaded point cloud...\n";
 
   // Instantiate the tree root node
   treeNode* root= new treeNode;
@@ -220,7 +252,7 @@ int main(int argc, char** argv) {
   root->outliers= cloudIndices;
   root->score= root->outliers->size();
   root->isRoot= true;
-  cout << "Instantiated parse tree...\n";
+  if (VERBOSE) cout << "Instantiated parse tree...\n";
 
   vector<int> inliers;
   vector<int> outliers;
@@ -228,7 +260,7 @@ int main(int argc, char** argv) {
   pcl::copyPointCloud<pcl::PointXYZ>(*cloud, *cloudIndices, *updated);
   treeNode* result=0; treeNode* workingNode;
   bool stillRunning= true;
-  cout << "Built working cloud...\n";
+  if (VERBOSE) cout << "Built working cloud...\n";
   pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
   pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr tree (new pcl::KdTreeFLANN<pcl::PointXYZ>());
   pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
@@ -239,14 +271,14 @@ int main(int argc, char** argv) {
   ne.setInputCloud(updated);
   ne.setKSearch(50);
   ne.compute(*cloud_normals);
-  cout << "Computed normals...\n";
+  if (VERBOSE) cout << "Computed normals...\n";
 
   //Add the root treeNode to the queue
   toCompute.push(root);
-  cout<<"Fitting model";
+  if (VERBOSE) cout<<"Fitting model";
   // Iterate over ransac models
   while (toCompute.size() > 0 && stillRunning){
-    cout << "." << flush;
+    if (VERBOSE) cout << "." << flush;
     // Pop off the head of the queue
     workingNode= toCompute.front();
     toCompute.pop();
@@ -290,7 +322,7 @@ int main(int argc, char** argv) {
       }
     }
   }
-  cout << "\n";
+  if (VERBOSE) if (VERBOSE) cout << "\n";
   
   // Cascade back to find the path of shapes
   vector<int> reversePath;
@@ -319,7 +351,7 @@ int main(int argc, char** argv) {
 
   // Print the number of iterations
   cout << "Number of clusters found: " << CLUSTERS << "\n";
-  visualizeCloud(clouds);
+  if (VISUAL) visualizeCloud(clouds);
 
   return 0;
  }
