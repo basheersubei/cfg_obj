@@ -24,6 +24,8 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
+// Include our own header files
+#include "obj_point_types.h"
 
 // Using declarations
 using std::cout;
