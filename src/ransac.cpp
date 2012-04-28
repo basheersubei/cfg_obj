@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <queue>
 #include <cstring>
+#include <cmath>
+#include <string>
 // Include necessary ros/pcl libraries
 #include <pcl/console/parse.h>
 #include <pcl/filters/extract_indices.h>
@@ -32,6 +34,7 @@ using std::cout;
 using std::vector;
 using std::queue;
 using std::flush;
+using std::string;
 
 // Set constants
 int MAX_OUTLIERS;
@@ -57,6 +60,7 @@ struct Tree {
 typedef struct Tree treeNode;
 //-----------------------------------------------------------------------------------------------------------------
 
+// Cloud Visualization Methods ---------------------------------------------------------------------------------------------
 // Open 3D viewer to visualize the segmented pointcloud
 boost::shared_ptr<pcl::visualization::PCLVisualizer> rgbVis (vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds)
 {
@@ -93,6 +97,7 @@ void visualizeCloud(vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds){
   }
 }
 
+// RANSAC Methods ---------------------------------------------------------------------------------------------
 // Compute the best ransac fit for a single plane
 vector<int> ransacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr updated){
   vector<int> inliers;
@@ -121,7 +126,7 @@ vector<int> ransacSphere(pcl::PointCloud<pcl::PointXYZ>::Ptr updated){
   return inliers;
 }
 
-// Compute the best ransac fit for a single plane
+// Compute the best ransac fit for a single cylinder
 vector<int> ransacCylinder(pcl::PointCloud<pcl::PointXYZ>::Ptr updated, pcl::PointCloud<pcl::Normal>::Ptr cloud_normals){
   pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
   pcl::PointIndices::Ptr inliers_cyl (new pcl::PointIndices);
@@ -142,6 +147,54 @@ vector<int> ransacCylinder(pcl::PointCloud<pcl::PointXYZ>::Ptr updated, pcl::Poi
 
   return inliers_cyl->indices;
 }
+// End RANSAC Methods ---------------------------------------------------------------------------------------------
+
+// Neighbor computation methods -----------------------------------------------------------------------------------
+
+// Checks to see if two point clouds are neighbors
+// Compares based on threshold distance (thresh)
+bool areNeighbors(pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA, pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB, float thresh) {
+  // Loop through all points in cloudA, against all points in cloudB
+  // If the distance between any two points is ever thresh or below, consider them neighbors and return true
+  for(size_t i=0; i<cloudA->points.size(); i++) {
+    float AX = cloudA->points[i].x;
+    float AY = cloudA->points[i].y;
+    float AZ = cloudA->points[i].z;
+    for(size_t j=0; j<cloudB->points.size(); j++) {
+      float dX = (AX - cloudB->points[j].x);
+      float dY = (AY - cloudB->points[j].y);
+      float dZ = (AZ - cloudB->points[j].z);
+      float dist = sqrt(dX*dX+dY*dY+dZ*dZ);
+      if(dist<thresh)
+        return true; 
+    }
+  }
+  return false;
+}
+
+// Takes in a vector of point clouds and returns
+vector<vector<int>*> findNeighbors(vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds, float thresh) {
+  if (VERBOSE) cout << "Computing neighbor map" << flush;
+  vector<vector<int>*> neighborHood;
+  for(int i=0; i<(int)clouds.size(); i++) {
+    if (VERBOSE) cout << "." << flush;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = clouds[i];
+    // Find neighbors of cloudA (cloud at location i in vector)
+    vector<int>* neighbors= new vector<int>;
+    for(int j=0; j<(int)clouds.size(); j++) {
+      if(i==j) continue;			
+      pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = clouds[j];
+      if(areNeighbors(cloudA,cloudB,thresh)){
+        neighbors->push_back(j);
+      }
+    }
+    neighborHood.push_back(neighbors);
+  }
+  if (VERBOSE) cout << endl;
+  return neighborHood;
+}
+
+// End Neighbor computation methods -------------------------------------------------------------------------------
 
 // Update a cloud given a list of inliers
 void updateCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, vector<int> inliers, 
@@ -353,7 +406,45 @@ int main(int argc, char** argv) {
 
   // Print the number of iterations
   cout << "Number of clusters found: " << CLUSTERS << "\n";
-  if (VISUAL) visualizeCloud(clouds);
 
+  // Build segmented cloud
+  if (VERBOSE) cout << "Building segmented cloud..." << endl;
+  pcl::PointCloud<pcl::PointXYZRGBCamSL> segmentedPCD= *(new pcl::PointCloud<pcl::PointXYZRGBCamSL>());
+  for (int i=0; i<(int)clouds.size(); i++){
+    pcl::PointCloud<pcl::PointXYZRGBCamSL> segment= *(new pcl::PointCloud<pcl::PointXYZRGBCamSL>());
+    segment.resize(clouds[i]->size());
+    for (int j=0; j<(int)clouds[i]->size(); j++){
+      segment.points[j].clone(clouds[i]->points[j]);
+      segment.points[j].segment= i;
+    }
+    segmentedPCD+= segment;
+  }
+
+  // Compute neighbor map
+  vector<vector<int>*> neighborMap= findNeighbors(clouds, THRESHOLD*2.0);
+
+  // Write segmented cloud to a file
+  if (VERBOSE) cout << "Writing segments to a file..." << endl;
+  string filename= string(pcdName);
+  string segFile= filename.substr(0,filename.length()-4).append("_segmented.pcd");
+  pcl::io::savePCDFile<pcl::PointXYZRGBCamSL>(segFile,segmentedPCD,true);
+
+  // Write neighbor map to a file
+  if (VERBOSE) cout << "Writing neighbors to a file..." << endl;
+  string neighFile= filename.substr(0,filename.length()-4).append("_nbr.txt");
+  std::ofstream logFile;    
+  logFile.open(neighFile.data(),ios::out);
+  for (size_t i = 0; i < neighborMap.size(); i++){
+      logFile << i+1;
+      for (size_t j = 0; j<neighborMap[i]->size(); j++){
+        logFile<<","<<((*neighborMap[i])[j] + 1);
+      }
+      logFile << endl;
+    }
+    logFile.close();
+
+  // Display segments visually
+  if (VISUAL) visualizeCloud(clouds);
+  
   return 0;
- }
+}
