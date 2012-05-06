@@ -9,6 +9,7 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/cfg_obj</url>
   <depend package="pcl"/>
+  <depend package="pcl_visualization"/>
   <depend package="rospy"/>
 
 </package>
