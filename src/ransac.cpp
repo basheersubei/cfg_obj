@@ -415,7 +415,7 @@ int main(int argc, char** argv) {
     segment.resize(clouds[i]->size());
     for (int j=0; j<(int)clouds[i]->size(); j++){
       segment.points[j].clone(clouds[i]->points[j]);
-      segment.points[j].segment= i;
+      segment.points[j].segment= i+1; // Clouds are indexed from 1
     }
     segmentedPCD+= segment;
   }
@@ -427,7 +427,7 @@ int main(int argc, char** argv) {
   if (VERBOSE) cout << "Writing segments to a file..." << endl;
   string filename= string(pcdName);
   string segFile= filename.substr(0,filename.length()-4).append("_segmented.pcd");
-  pcl::io::savePCDFile<pcl::PointXYZRGBCamSL>(segFile,segmentedPCD,true);
+  pcl::io::savePCDFile<pcl::PointXYZRGBCamSL>(segFile,segmentedPCD,false);
 
   // Write neighbor map to a file
   if (VERBOSE) cout << "Writing neighbors to a file..." << endl;
@@ -435,9 +435,9 @@ int main(int argc, char** argv) {
   std::ofstream logFile;    
   logFile.open(neighFile.data(),ios::out);
   for (size_t i = 0; i < neighborMap.size(); i++){
-      logFile << i+1;
+      logFile << i+1; // Clouds are indexed from 1
       for (size_t j = 0; j<neighborMap[i]->size(); j++){
-        logFile<<","<<((*neighborMap[i])[j] + 1);
+        logFile<<","<<((*neighborMap[i])[j] + 1); // Clouds are indexed from 1
       }
       logFile << endl;
     }
