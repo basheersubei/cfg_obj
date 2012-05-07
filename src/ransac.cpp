@@ -10,7 +10,7 @@
 #include <cmath>
 #include <string>
 // Include necessary ros/pcl libraries
-#include <pcl/console/parse.h>
+//#include <pcl/console/parse.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
@@ -416,6 +416,7 @@ int main(int argc, char** argv) {
     for (int j=0; j<(int)clouds[i]->size(); j++){
       segment.points[j].clone(clouds[i]->points[j]);
       segment.points[j].segment= i+1; // Clouds are indexed from 1
+      segment.points[j].label= reversePath[reversePath.size()-1-i]; // Label contains the shape ID
     }
     segmentedPCD+= segment;
   }
@@ -442,6 +443,22 @@ int main(int argc, char** argv) {
       logFile << endl;
     }
     logFile.close();
+
+  // Writing basic parse tree to a file
+  if (VERBOSE) cout << "Writing base parse tree to a file...." << endl;
+  string treeFile= filename.substr(0,filename.length()-4).append("_tree.dot");
+  logFile.open(treeFile.data(), ios::out);
+  logFile << "digraph g {" << endl;
+  for (size_t i=0; i<clouds.size(); i++){
+    logFile << "  Terminal__" << i+1 << "__";
+    int ind= reversePath.size() - i - 1;
+    if (reversePath[ind] == 0) logFile << "plane";
+    else if (reversePath[ind] == 1) logFile << "clylinder";
+    else if (reversePath[ind] == 2) logFile << "sphere";
+    logFile << " ;" << endl;
+  }
+  logFile << "}" << endl;
+  logFile.close();
 
   // Display segments visually
   if (VISUAL) visualizeCloud(clouds);
