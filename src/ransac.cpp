@@ -446,11 +446,11 @@ int main(int argc, char** argv) {
 
   // Writing basic parse tree to a file
   if (VERBOSE) cout << "Writing base parse tree to a file...." << endl;
-  string treeFile= filename.substr(0,filename.length()-4).append("_tree.dot");
+  string treeFile= filename.substr(0,filename.length()-4).append("_gt_tree.dot");
   logFile.open(treeFile.data(), ios::out);
-  logFile << "digraph g {" << endl;
+  logFile << "digraph g{" << endl;
   for (size_t i=0; i<clouds.size(); i++){
-    logFile << "  Terminal__" << i+1 << "__";
+    logFile << "Terminal__" << i+1 << "__";
     int ind= reversePath.size() - i - 1;
     if (reversePath[ind] == 0) logFile << "plane";
     else if (reversePath[ind] == 1) logFile << "clylinder";

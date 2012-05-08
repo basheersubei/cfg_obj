@@ -19,7 +19,9 @@ int main(int argc, char** argv){
   strcpy(command,"python ");
   strcat(command, path);
   for (int i=1; i<argc; i++){
+    if (argv[i][0]=='<') strcat(command, "\"");
     strcat(command, argv[i]);
+    if (argv[i][0]=='<') strcat(command, "\"");
     strcat(command," ");
   }
 
