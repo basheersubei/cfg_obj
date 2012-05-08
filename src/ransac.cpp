@@ -46,6 +46,8 @@ const int SHAPES= 3;
 const int MAX_CYL_ITERATIONS= 250;
 bool VERBOSE= false;
 bool VISUAL= false;
+bool TREE= true;
+bool NEIGHBORS= true;
 
 // A tree structure to keep track of the shape sequences ----------------------------------------------------------
 struct Tree {
@@ -247,6 +249,8 @@ void usage(){
   cout << "\nUsage: rosrun cfg_obj ransac [OPTIONS] <input_cloud.pcd>\n";
   cout << "\nOptions:\n";
   cout << "\n  --help		Print usage options.\n";
+  cout << "  -noneighbors       Exclude the neighbor map.\n";
+  cout << "  -notree            Exclude the base parse tree file.\n";
   cout << "  -vv		Verbose mode, print out progress during computation.\n";
   cout << "  -visual		Visual mode, display a colored segmentation of the cloud.\n";
   cout << "\n  Purpose: Uses a generalized RANSAC algorithm to segment a PCL pointcloud (.pcd) file into component shapes. Supported shapes are planes, cylinders, and spheres. Dumps the segmented .pcd file as well as a neighbor map between segments.\n" << endl;
@@ -279,6 +283,10 @@ int main(int argc, char** argv) {
     } else if (strcmp(argv[i],"--help")==0){ // Check help flag
       usage();
       exit(0);
+    } else if (strcmp(argv[i],"-noneighbors")==0){ //Check neighbor flag
+      NEIGHBORS= false;
+    } else if (strcmp(argv[i],"-notree")==0){ //Check tree flag
+      TREE= false;
     }
   }
 
@@ -422,7 +430,8 @@ int main(int argc, char** argv) {
   }
 
   // Compute neighbor map
-  vector<vector<int>*> neighborMap= findNeighbors(clouds, THRESHOLD*2.0);
+  vector<vector<int>*> neighborMap;
+  if (NEIGHBORS) neighborMap= findNeighbors(clouds, THRESHOLD*2.0);
 
   // Write segmented cloud to a file
   if (VERBOSE) cout << "Writing segments to a file..." << endl;
@@ -431,11 +440,12 @@ int main(int argc, char** argv) {
   pcl::io::savePCDFile<pcl::PointXYZRGBCamSL>(segFile,segmentedPCD,false);
 
   // Write neighbor map to a file
-  if (VERBOSE) cout << "Writing neighbors to a file..." << endl;
-  string neighFile= filename.substr(0,filename.length()-4).append("_nbr.txt");
-  std::ofstream logFile;    
-  logFile.open(neighFile.data(),ios::out);
-  for (size_t i = 0; i < neighborMap.size(); i++){
+  std::ofstream logFile;
+  if (NEIGHBORS) {
+    if (VERBOSE) cout << "Writing neighbors to a file..." << endl;
+    string neighFile= filename.substr(0,filename.length()-4).append("_nbr.txt");
+    logFile.open(neighFile.data(),ios::out);
+    for (size_t i = 0; i < neighborMap.size(); i++){
       logFile << i+1; // Clouds are indexed from 1
       for (size_t j = 0; j<neighborMap[i]->size(); j++){
         logFile<<","<<((*neighborMap[i])[j] + 1); // Clouds are indexed from 1
@@ -443,22 +453,25 @@ int main(int argc, char** argv) {
       logFile << endl;
     }
     logFile.close();
+  }
 
   // Writing basic parse tree to a file
-  if (VERBOSE) cout << "Writing base parse tree to a file...." << endl;
-  string treeFile= filename.substr(0,filename.length()-4).append("_gt_tree.dot");
-  logFile.open(treeFile.data(), ios::out);
-  logFile << "digraph g{" << endl;
-  for (size_t i=0; i<clouds.size(); i++){
-    logFile << "Terminal__" << i+1 << "__";
-    int ind= reversePath.size() - i - 1;
-    if (reversePath[ind] == 0) logFile << "plane";
-    else if (reversePath[ind] == 1) logFile << "clylinder";
-    else if (reversePath[ind] == 2) logFile << "sphere";
-    logFile << " ;" << endl;
+  if (TREE) {
+    if (VERBOSE) cout << "Writing base parse tree to a file...." << endl;
+    string treeFile= filename.substr(0,filename.length()-4).append("_gt_tree.dot");
+    logFile.open(treeFile.data(), ios::out);
+    logFile << "digraph g{" << endl;
+    for (size_t i=0; i<clouds.size(); i++){
+      logFile << "Terminal__" << i+1 << "__";
+      int ind= reversePath.size() - i - 1;
+      if (reversePath[ind] == 0) logFile << "plane";
+      else if (reversePath[ind] == 1) logFile << "clylinder";
+      else if (reversePath[ind] == 2) logFile << "sphere";
+      logFile << " ;" << endl;
+    }
+    logFile << "}" << endl;
+    logFile.close();
   }
-  logFile << "}" << endl;
-  logFile.close();
 
   // Display segments visually
   if (VISUAL) visualizeCloud(clouds);
