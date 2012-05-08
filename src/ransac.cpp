@@ -49,6 +49,8 @@ bool VISUAL= false;
 bool TREE= true;
 bool NEIGHBORS= true;
 
+typedef pcl::PointXYZRGB PointT;
+
 // A tree structure to keep track of the shape sequences ----------------------------------------------------------
 struct Tree {
   bool isRoot;
@@ -64,7 +66,7 @@ typedef struct Tree treeNode;
 
 // Cloud Visualization Methods ---------------------------------------------------------------------------------------------
 // Open 3D viewer to visualize the segmented pointcloud
-boost::shared_ptr<pcl::visualization::PCLVisualizer> rgbVis (vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds)
+boost::shared_ptr<pcl::visualization::PCLVisualizer> rgbVis (vector<pcl::PointCloud<PointT>::Ptr> clouds)
 {
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
   viewer->setBackgroundColor (0, 0, 0);
@@ -89,7 +91,7 @@ boost::shared_ptr<pcl::visualization::PCLVisualizer> rgbVis (vector<pcl::PointCl
 }
 
 // Visualize the point clouds in different colors
-void visualizeCloud(vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds){
+void visualizeCloud(vector<pcl::PointCloud<PointT>::Ptr> clouds){
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
   viewer= rgbVis(clouds);
   while (!viewer->wasStopped ())
@@ -101,12 +103,12 @@ void visualizeCloud(vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds){
 
 // RANSAC Methods ---------------------------------------------------------------------------------------------
 // Compute the best ransac fit for a single plane
-vector<int> ransacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr updated){
+vector<int> ransacPlane(pcl::PointCloud<PointT>::Ptr updated){
   vector<int> inliers;
   // created RandomSampleConsensus object and compute the appropriated model
-  pcl::SampleConsensusModelPlane<pcl::PointXYZ>::Ptr
-      model_p (new pcl::SampleConsensusModelPlane<pcl::PointXYZ> (updated));
-  pcl::RandomSampleConsensus<pcl::PointXYZ> ransac (model_p);
+  pcl::SampleConsensusModelPlane<PointT>::Ptr
+      model_p (new pcl::SampleConsensusModelPlane<PointT> (updated));
+  pcl::RandomSampleConsensus<PointT> ransac (model_p);
   ransac.setDistanceThreshold (THRESHOLD);
   ransac.computeModel();
   ransac.getInliers(inliers);
@@ -115,12 +117,12 @@ vector<int> ransacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr updated){
 }
 
 // Compute the best ransac fit for a single sphere
-vector<int> ransacSphere(pcl::PointCloud<pcl::PointXYZ>::Ptr updated){
+vector<int> ransacSphere(pcl::PointCloud<PointT>::Ptr updated){
   vector<int> inliers;
   // created RandomSampleConsensus object and compute the appropriated model
-  pcl::SampleConsensusModelSphere<pcl::PointXYZ>::Ptr
-      model_p (new pcl::SampleConsensusModelSphere<pcl::PointXYZ> (updated));
-  pcl::RandomSampleConsensus<pcl::PointXYZ> ransac (model_p);
+  pcl::SampleConsensusModelSphere<PointT>::Ptr
+      model_p (new pcl::SampleConsensusModelSphere<PointT> (updated));
+  pcl::RandomSampleConsensus<PointT> ransac (model_p);
   ransac.setDistanceThreshold (THRESHOLD);
   ransac.computeModel();
   ransac.getInliers(inliers);
@@ -129,8 +131,8 @@ vector<int> ransacSphere(pcl::PointCloud<pcl::PointXYZ>::Ptr updated){
 }
 
 // Compute the best ransac fit for a single cylinder
-vector<int> ransacCylinder(pcl::PointCloud<pcl::PointXYZ>::Ptr updated, pcl::PointCloud<pcl::Normal>::Ptr cloud_normals){
-  pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
+vector<int> ransacCylinder(pcl::PointCloud<PointT>::Ptr updated, pcl::PointCloud<pcl::Normal>::Ptr cloud_normals){
+  pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
   pcl::PointIndices::Ptr inliers_cyl (new pcl::PointIndices);
   pcl::ModelCoefficients::Ptr coefficients_cylinder (new pcl::ModelCoefficients);
 
@@ -155,7 +157,7 @@ vector<int> ransacCylinder(pcl::PointCloud<pcl::PointXYZ>::Ptr updated, pcl::Poi
 
 // Checks to see if two point clouds are neighbors
 // Compares based on threshold distance (thresh)
-bool areNeighbors(pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA, pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB, float thresh) {
+bool areNeighbors(pcl::PointCloud<PointT>::Ptr cloudA, pcl::PointCloud<PointT>::Ptr cloudB, float thresh) {
   // Loop through all points in cloudA, against all points in cloudB
   // If the distance between any two points is ever thresh or below, consider them neighbors and return true
   for(size_t i=0; i<cloudA->points.size(); i++) {
@@ -175,17 +177,17 @@ bool areNeighbors(pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA, pcl::PointCloud<pc
 }
 
 // Takes in a vector of point clouds and returns
-vector<vector<int>*> findNeighbors(vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds, float thresh) {
+vector<vector<int>*> findNeighbors(vector<pcl::PointCloud<PointT>::Ptr> clouds, float thresh) {
   if (VERBOSE) cout << "Computing neighbor map" << flush;
   vector<vector<int>*> neighborHood;
   for(int i=0; i<(int)clouds.size(); i++) {
     if (VERBOSE) cout << "." << flush;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloudA = clouds[i];
+    pcl::PointCloud<PointT>::Ptr cloudA = clouds[i];
     // Find neighbors of cloudA (cloud at location i in vector)
     vector<int>* neighbors= new vector<int>;
     for(int j=0; j<(int)clouds.size(); j++) {
       if(i==j) continue;			
-      pcl::PointCloud<pcl::PointXYZ>::Ptr cloudB = clouds[j];
+      pcl::PointCloud<PointT>::Ptr cloudB = clouds[j];
       if(areNeighbors(cloudA,cloudB,thresh)){
         neighbors->push_back(j);
       }
@@ -199,19 +201,19 @@ vector<vector<int>*> findNeighbors(vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> c
 // End Neighbor computation methods -------------------------------------------------------------------------------
 
 // Update a cloud given a list of inliers
-void updateCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, vector<int> inliers, 
-  vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>* clouds, pcl::PointCloud<pcl::PointXYZ>::Ptr updated, 
+void updateCloud(pcl::PointCloud<PointT>::Ptr cloud, vector<int> inliers, 
+  vector<pcl::PointCloud<PointT>::Ptr>* clouds, pcl::PointCloud<PointT>::Ptr updated, 
   pcl::PointCloud<pcl::Normal>::Ptr working_normals){
 
   // copies all inliers of the model computed to another PointCloud
-  pcl::PointCloud<pcl::PointXYZ>::Ptr final (new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::copyPointCloud<pcl::PointXYZ>(*cloud, inliers, *final);
+  pcl::PointCloud<PointT>::Ptr final (new pcl::PointCloud<PointT>);
+  pcl::copyPointCloud<PointT>(*cloud, inliers, *final);
   (*clouds).push_back(final);
 
   // Remove inliers from original cloud
   pcl::PointIndices::Ptr fInliers (new pcl::PointIndices);
   fInliers->indices= inliers;
-  pcl::ExtractIndices<pcl::PointXYZ> extract; 
+  pcl::ExtractIndices<PointT> extract; 
   extract.setInputCloud(updated); 
   extract.setIndices(fInliers);
   extract.setNegative(true); // Removes part_of_cloud from full cloud  and keep the rest
@@ -229,7 +231,7 @@ void updateCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, vector<int> inliers,
 }
 
 //Return a set of outliers given a cloud and a set of inliers
-vector<int>* getOutliers(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, vector<int> inliers){
+vector<int>* getOutliers(pcl::PointCloud<PointT>::Ptr cloud, vector<int> inliers){
   vector<int>* outliers= new vector<int>;
   int index=0;
   for (int i=0; i<(int)(cloud->width * cloud->height); i++){
@@ -294,12 +296,12 @@ int main(int argc, char** argv) {
   queue<treeNode*> toCompute;
 
   // initialize PointClouds
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PointCloud<pcl::PointXYZ>::Ptr updated (new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<PointT>::Ptr cloud (new pcl::PointCloud<PointT>);
+  pcl::PointCloud<PointT>::Ptr updated (new pcl::PointCloud<PointT>);
 
   char* pcdName = argv[argc-1];
   
-  if (pcl::io::loadPCDFile<pcl::PointXYZ> (pcdName, *cloud) == -1) //* load the file
+  if (pcl::io::loadPCDFile<PointT> (pcdName, *cloud) == -1) //* load the file
   {
     PCL_ERROR ("Couldn't read .pcd file\n");
     return (-1);
@@ -319,13 +321,13 @@ int main(int argc, char** argv) {
 
   vector<int> inliers;
   vector<int> outliers;
-  vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds;
-  pcl::copyPointCloud<pcl::PointXYZ>(*cloud, *cloudIndices, *updated);
+  vector<pcl::PointCloud<PointT>::Ptr> clouds;
+  pcl::copyPointCloud<PointT>(*cloud, *cloudIndices, *updated);
   treeNode* result=0; treeNode* workingNode;
   bool stillRunning= true;
   if (VERBOSE) cout << "Built working cloud...\n";
-  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-  pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr tree (new pcl::KdTreeFLANN<pcl::PointXYZ>());
+  pcl::NormalEstimation<PointT, pcl::Normal> ne;
+  pcl::KdTreeFLANN<PointT>::Ptr tree (new pcl::KdTreeFLANN<PointT>());
   pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
   pcl::PointCloud<pcl::Normal>::Ptr working_normals (new pcl::PointCloud<pcl::Normal>);
 
@@ -347,7 +349,7 @@ int main(int argc, char** argv) {
     toCompute.pop();
 
     // Build cloud of points remaining to be fit
-    pcl::copyPointCloud<pcl::PointXYZ>(*cloud, *(workingNode->outliers), *updated);
+    pcl::copyPointCloud<PointT>(*cloud, *(workingNode->outliers), *updated);
     pcl::copyPointCloud<pcl::Normal>(*cloud_normals, *(workingNode->outliers), *working_normals);
 
     // Compute children of this node, and add them to the queue
@@ -395,7 +397,7 @@ int main(int argc, char** argv) {
   }
 
   //Compute series of fit clouds
-  pcl::copyPointCloud<pcl::PointXYZ>(*cloud, *cloudIndices, *updated);
+  pcl::copyPointCloud<PointT>(*cloud, *cloudIndices, *updated);
   pcl::copyPointCloud<pcl::Normal>(*cloud_normals, *cloudIndices, *working_normals);
   cout << "Shapes Fit: ";
   for (int i=reversePath.size()-1; i>=0; i--){
