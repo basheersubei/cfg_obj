@@ -49,6 +49,7 @@ const int SHAPES= 3;
 const int MAX_CYL_ITERATIONS= 250;
 bool VERBOSE= false;
 bool VISUAL= false;
+const int DEFAULT_COLOR= 75;
 
 // A tree structure to keep track of the shape sequences ----------------------------------------------------------
 struct Tree {
@@ -252,7 +253,7 @@ void usage(){
   cout << "\nOptions:\n";
   cout << "\n  --help		Print usage options.\n";
   cout << "  -vv		Verbose mode, print out progress during computation.\n";
-  cout << "  -visual		Visual mode, display a colored segmentation of the cloud.\n";
+//  cout << "  -visual		Visual mode, display a colored segmentation of the cloud.\n";
   cout << "\n  Purpose: Uses a generalized RANSAC algorithm to segment a PCL pointcloud (.pcd) file into component shapes. Supported shapes are planes, cylinders, and spheres. Dumps the segmented .pcd file as well as a neighbor map between segments.\n" << endl;
 }
 
@@ -419,6 +420,7 @@ int main(int argc, char** argv) {
     segment.points.resize(clouds[i]->size());
     for (int j=0; j<(int)clouds[i]->size(); j++){
       segment.points[j].clone(clouds[i]->points[j]);
+      segment.points[j].rgb= (((DEFAULT_COLOR)<<16) | ((DEFAULT_COLOR)<<8) | (DEFAULT_COLOR));
       segment.points[j].segment= i+1; // Clouds are indexed from 1
       segment.points[j].label= reversePath[reversePath.size()-1-i]; // Label contains the shape ID
     }
