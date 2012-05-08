@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cmath>
 #include <string>
+#include <fstream>
 // Include necessary ros/pcl libraries
 //#include <pcl/console/parse.h>
 #include <pcl/filters/extract_indices.h>
@@ -17,7 +18,7 @@
 #include <pcl/sample_consensus/ransac.h>
 #include <pcl/sample_consensus/sac_model_plane.h>
 #include <pcl/sample_consensus/sac_model_sphere.h>
-#include <pcl/visualization/pcl_visualizer.h>
+//#include <pcl_visualization/pcl_visualizer.h> //Modified for diamondback #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/extract_indices.h>
@@ -35,6 +36,8 @@ using std::vector;
 using std::queue;
 using std::flush;
 using std::string;
+using std::endl;
+using std::ios;
 
 // Set constants
 int MAX_OUTLIERS;
@@ -60,6 +63,7 @@ struct Tree {
 typedef struct Tree treeNode;
 //-----------------------------------------------------------------------------------------------------------------
 
+/*
 // Cloud Visualization Methods ---------------------------------------------------------------------------------------------
 // Open 3D viewer to visualize the segmented pointcloud
 boost::shared_ptr<pcl::visualization::PCLVisualizer> rgbVis (vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds)
@@ -95,7 +99,7 @@ void visualizeCloud(vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds){
     viewer->spinOnce (100);
     boost::this_thread::sleep (boost::posix_time::microseconds (100000));
   }
-}
+}*/
 
 // RANSAC Methods ---------------------------------------------------------------------------------------------
 // Compute the best ransac fit for a single plane
@@ -293,7 +297,7 @@ int main(int argc, char** argv) {
   
   if (pcl::io::loadPCDFile<pcl::PointXYZ> (pcdName, *cloud) == -1) //* load the file
   {
-    PCL_ERROR ("Couldn't read .pcd file\n");
+    cout << "Couldn't read .pcd file" << endl;
     return (-1);
   }
   MAX_OUTLIERS= (int)(cloud->size() * .05); 
@@ -412,7 +416,7 @@ int main(int argc, char** argv) {
   pcl::PointCloud<pcl::PointXYZRGBCamSL> segmentedPCD= *(new pcl::PointCloud<pcl::PointXYZRGBCamSL>());
   for (int i=0; i<(int)clouds.size(); i++){
     pcl::PointCloud<pcl::PointXYZRGBCamSL> segment= *(new pcl::PointCloud<pcl::PointXYZRGBCamSL>());
-    segment.resize(clouds[i]->size());
+    segment.points.resize(clouds[i]->size());
     for (int j=0; j<(int)clouds[i]->size(); j++){
       segment.points[j].clone(clouds[i]->points[j]);
       segment.points[j].segment= i+1; // Clouds are indexed from 1
@@ -461,7 +465,7 @@ int main(int argc, char** argv) {
   logFile.close();
 
   // Display segments visually
-  if (VISUAL) visualizeCloud(clouds);
+  //if (VISUAL) visualizeCloud(clouds);
   
   return 0;
 }
