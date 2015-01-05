@@ -1,0 +1,22 @@
+<package>
+  <name>cfg_obj</name>
+  <version>1.0.0</version>
+  <description>
+     cfg_obj
+  </description>
+  <maintainer email="cja58@cornell.edu">Caspar Anderegg</maintainer>
+  <license>BSD</license>
+
+  <url>http://ros.org/wiki/cfg_obj</url>
+  <author>Caspar Anderegg</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>pcl</build_depend>
+  <build_depend>rospy</build_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>pcl</run_depend>
+  <run_depend>rospy</run_depend>
+
+</package>
